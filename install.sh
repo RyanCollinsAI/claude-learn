@@ -33,6 +33,23 @@ say() {  # say <ok|miss|opt> <label> <detail>
   printf "  %s %-16s %s\n" "$tag" "$2" "$3"
 }
 
+# The first candidate that actually RUNS, not the first one on PATH. Windows ships a `python3`
+# shim that resolves fine and then exits 9009 telling you to visit the Microsoft Store, so
+# `command -v` alone picks a binary that cannot execute a single line.
+PY=""
+pick_python() {
+  for c in python3 python py; do
+    command -v "$c" >/dev/null 2>&1 || continue
+    if [ "$c" = "py" ]; then
+      if py -3 -c 'pass' >/dev/null 2>&1; then PY="py -3"; return 0; fi
+    elif "$c" -c 'pass' >/dev/null 2>&1; then
+      PY="$c"; return 0
+    fi
+  done
+  return 1
+}
+pick_python || true
+
 echo "claude-learn installer"
 echo "  repo   $REPO"
 echo "  target $DEST"
@@ -77,13 +94,20 @@ else
   fi
 
   echo
-  python3 "$REPO/tools/write_config.py" "$CONFIG" "$VAULT" "$VAULT_NAME" "$LEARNING" "$COURSE"
+  if [ -z "$PY" ]; then
+    echo "No working python found - cannot write config.json." >&2
+    echo "Install Python 3.9+ and re-run, or copy config.example.json to $CONFIG by hand." >&2
+    exit 1
+  fi
+  $PY "$REPO/tools/write_config.py" "$CONFIG" "$VAULT" "$VAULT_NAME" "$LEARNING" "$COURSE"
   echo "Wrote $CONFIG"
 
   # The notes folder and the learner profile have to exist before the first session: quiz.py
   # refuses to write into a note that is not there, and the profile is read before every probe.
+  # Create before resolving: `cd` into a vault that does not exist yet is a hard failure, and
+  # pointing the installer at a folder you have not made yet is the normal first run.
+  mkdir -p "$VAULT/$LEARNING"
   FULL="$(cd "$VAULT" && pwd)"
-  mkdir -p "$FULL/$LEARNING"
   if [ ! -f "$FULL/$LEARNING/LEARNER.md" ]; then
     cp "$REPO/templates/LEARNER.md" "$FULL/$LEARNING/LEARNER.md"
     echo "  seeded $FULL/$LEARNING/LEARNER.md - fill in who you are before the first session"
@@ -93,15 +117,15 @@ fi
 # ---------------------------------------------------------------- 3. dependencies
 echo
 echo "Dependencies"
-if command -v python3 >/dev/null; then
-  V="$(python3 -c 'import sys;print("%d.%d" % sys.version_info[:2])')"
-  if python3 -c 'import sys;sys.exit(0 if sys.version_info>=(3,9) else 1)'; then
-    say ok python "$V at $(command -v python3)"
+if [ -n "$PY" ]; then
+  V="$($PY -c 'import sys;print("%d.%d" % sys.version_info[:2])')"
+  if $PY -c 'import sys;sys.exit(0 if sys.version_info>=(3,9) else 1)'; then
+    say ok python "$V via '$PY'"
   else
     say miss python "$V - needs 3.9 or newer"
   fi
 else
-  say miss python "not on PATH - quiz.py and both render tools need it"
+  say miss python "no working python found - quiz.py and both render tools need one"
 fi
 
 if command -v claude >/dev/null; then
@@ -122,7 +146,7 @@ else
   say opt chrome "optional - only the two render tools need it. Set chrome_path if installed elsewhere."
 fi
 
-if command -v python3 >/dev/null && python3 -c 'import PIL' 2>/dev/null; then
+if [ -n "$PY" ] && $PY -c 'import PIL' 2>/dev/null; then
   say ok pillow "diagram crops will be exact"
 else
   say opt pillow "optional - without it a rendered diagram keeps a little slack, never clipped"
