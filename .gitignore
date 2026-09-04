@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+
+# Per-machine, written by the installer. Only config.example.json is versioned.
+config.json
+skills/learn/config.json
+
+# Test and render output. Both render tools write PNGs; nothing generated belongs in the repo.
+*.png
+*.mmd
