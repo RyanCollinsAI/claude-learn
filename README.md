@@ -11,7 +11,7 @@ Ask it to teach you something and it does three things in order. It **probes** -
 ```powershell
 git clone https://github.com/RyanCollinsAI/claude-learn.git
 cd claude-learn
-.\install.ps1 -VaultRoot C:\path\to\your\vault
+.\install.ps1 -VaultRoot C:\path\to\your\vault -Verify
 ```
 
 **macOS / Linux**
@@ -19,10 +19,10 @@ cd claude-learn
 ```bash
 git clone https://github.com/RyanCollinsAI/claude-learn.git
 cd claude-learn
-./install.sh --vault-root /path/to/your/vault
+./install.sh --vault-root /path/to/your/vault --verify
 ```
 
-The installer copies the skill to `~/.claude/skills/learn`, copies `commands/learn.md` to `~/.claude/commands/learn.md` so `/learn` exists, writes a `config.json` for your machine, and reports which dependencies are present. An existing `config.json` is never overwritten.
+The installer copies the skill to `~/.claude/skills/learn`, copies `commands/learn.md` to `~/.claude/commands/learn.md` so `/learn` exists, writes a `config.json` for your machine, and reports which dependencies are present. An existing `config.json` is never overwritten. `-Verify` / `--verify` is optional: it runs one real probe question and a diagram render against a throwaway vault right after install and prints PASS/FAIL, so you know the install actually works before you use it on something real.
 
 Then, in Claude Code: **"teach me the master theorem"**, or `/learn <anything>`.
 
@@ -119,10 +119,11 @@ None of them touch the network at run time. `mermaid.min.js` is vendored for exa
 
 ```
 README.md
-install.ps1 / install.sh     copy the skill, write config.json, check dependencies
+install.ps1 / install.sh     copy the skill, write config.json, check dependencies, optional -Verify
 commands/learn.md            the /learn slash command the installer copies to ~/.claude/commands/
 config.example.json          every key, documented
 tools/write_config.py        one helper install.sh calls
+tools/verify_install.py      the -Verify / --verify smoke test both installers call
 skills/learn/
   SKILL.md                   what the teaching session actually reads
   tools/                     the seven CLI tools, plus vendored mermaid

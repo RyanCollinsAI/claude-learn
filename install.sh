@@ -2,9 +2,13 @@
 # Install the learn skill into ~/.claude/skills/learn (macOS / Linux).
 #
 #   ./install.sh [--vault-root DIR] [--vault-name NAME] [--learning-dir DIR]
-#                [--course-learning-dir PATTERN] [--no-prompt]
+#                [--course-learning-dir PATTERN] [--no-prompt] [--verify]
 #
 # Nothing is overwritten without being told to: an existing config.json is left alone.
+#
+# --verify runs one real probe question - ask, grade - plus a mermaid render, against a
+# throwaway vault under the system temp dir, right after install. Your real vault is never
+# touched by it. Prints PASS/FAIL per step and exits non-zero if a required step failed.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,6 +19,7 @@ VAULT_NAME=""
 LEARNING=""
 COURSE=""
 PROMPT=1
+VERIFY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -23,6 +28,7 @@ while [ $# -gt 0 ]; do
     --learning-dir) LEARNING="$2"; shift 2 ;;
     --course-learning-dir) COURSE="$2"; shift 2 ;;
     --no-prompt) PROMPT=0; shift ;;
+    --verify) VERIFY=1; shift ;;
     -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
@@ -172,8 +178,20 @@ fi
 
 say opt pwsh "layout.ps1 and open_note.ps1 are Windows only - switch windows yourself elsewhere"
 
-# ---------------------------------------------------------------- 4. done
+# ---------------------------------------------------------------- 4. verify
+if [ "$VERIFY" = "1" ]; then
+  echo
+  echo "Verify"
+  if [ -z "$PY" ]; then
+    echo "  FAIL     no python found - cannot run the smoke test"
+    exit 1
+  fi
+  $PY "$REPO/tools/verify_install.py" "$DEST"
+fi
+
+# ---------------------------------------------------------------- 5. done
 echo
 echo "Installed. In Claude Code, try:"
 echo '  "teach me the master theorem"'
+echo "  or /learn <anything>"
 echo "Read $DEST/tools/README.md for what each tool does."

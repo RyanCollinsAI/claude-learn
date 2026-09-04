@@ -25,8 +25,14 @@
 .PARAMETER NoPrompt
   Never ask. Use the flags and the defaults as given.
 
+.PARAMETER Verify
+  After installing, run one real probe question - ask, grade - plus a mermaid
+  render, against a throwaway vault under the system temp dir. Prints PASS/FAIL
+  per step and exits non-zero if any required step failed. Your real vault is
+  never touched by this.
+
 .EXAMPLE
-  .\install.ps1 -VaultRoot C:\Users\me\Vault -LearningDir Learning
+  .\install.ps1 -VaultRoot C:\Users\me\Vault -LearningDir Learning -Verify
 #>
 [CmdletBinding()]
 param(
@@ -34,7 +40,8 @@ param(
   [string]$VaultName = "",
   [string]$LearningDir = "",
   [string]$CourseLearningDir = "",
-  [switch]$NoPrompt
+  [switch]$NoPrompt,
+  [switch]$Verify
 )
 
 $ErrorActionPreference = 'Stop'
@@ -177,8 +184,21 @@ $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
 if ($pwshCmd) { Say $true 'pwsh' $pwshCmd.Source }
 else { Say $null 'pwsh' 'optional - layout.ps1 and open_note.ps1 tile and raise the windows for you' }
 
-# ---------------------------------------------------------------- 4. done
+# ---------------------------------------------------------------- 4. verify
+if ($Verify) {
+  Write-Host ""
+  Write-Host "Verify"
+  if (-not $py) {
+    Write-Host "  FAIL     no python found - cannot run the smoke test"
+    exit 1
+  }
+  & $py.Source (Join-Path $repo 'tools\verify_install.py') $dest
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+# ---------------------------------------------------------------- 5. done
 Write-Host ""
 Write-Host "Installed. In Claude Code, try:"
 Write-Host '  "teach me the master theorem"'
+Write-Host "  or /learn <anything>"
 Write-Host "Read $dest\tools\README.md for what each tool does."
