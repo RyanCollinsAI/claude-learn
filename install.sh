@@ -68,6 +68,11 @@ fi
 cp "$REPO/config.example.json"            "$DEST/"
 echo "Skill copied."
 
+# ---------------------------------------------------------------- 1b. the /learn command
+mkdir -p "$CLAUDE/commands"
+cp "$REPO/commands/learn.md" "$CLAUDE/commands/learn.md"
+echo "Command copied: $CLAUDE/commands/learn.md - /learn now works."
+
 # ---------------------------------------------------------------- 2. config.json
 CONFIG="$DEST/config.json"
 if [ -f "$CONFIG" ]; then

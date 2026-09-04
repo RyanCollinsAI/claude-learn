@@ -22,7 +22,7 @@ cd claude-learn
 ./install.sh --vault-root /path/to/your/vault
 ```
 
-The installer copies the skill to `~/.claude/skills/learn`, writes a `config.json` for your machine, and reports which dependencies are present. An existing `config.json` is never overwritten.
+The installer copies the skill to `~/.claude/skills/learn`, copies `commands/learn.md` to `~/.claude/commands/learn.md` so `/learn` exists, writes a `config.json` for your machine, and reports which dependencies are present. An existing `config.json` is never overwritten.
 
 Then, in Claude Code: **"teach me the master theorem"**, or `/learn <anything>`.
 
@@ -113,6 +113,7 @@ None of them touch the network at run time. `mermaid.min.js` is vendored for exa
 ```
 README.md
 install.ps1 / install.sh     copy the skill, write config.json, check dependencies
+commands/learn.md            the /learn slash command the installer copies to ~/.claude/commands/
 config.example.json          every key, documented
 tools/write_config.py        one helper install.sh calls
 skills/learn/

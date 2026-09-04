@@ -68,6 +68,12 @@ if (Test-Path (Join-Path $repo 'skills\learn\courses\*.md')) {
 Copy-Item (Join-Path $repo 'config.example.json') $dest -Force
 Write-Host "Skill copied."
 
+# ---------------------------------------------------------------- 1b. the /learn command
+$commandsDir = Join-Path $claude 'commands'
+New-Item -ItemType Directory -Force -Path $commandsDir | Out-Null
+Copy-Item (Join-Path $repo 'commands\learn.md') $commandsDir -Force
+Write-Host "Command copied: $(Join-Path $commandsDir 'learn.md') - /learn now works."
+
 # ---------------------------------------------------------------- 2. config.json
 $configPath = Join-Path $dest 'config.json'
 if (Test-Path $configPath) {
