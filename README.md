@@ -26,6 +26,8 @@ The installer copies the skill to `~/.claude/skills/learn`, copies `commands/lea
 
 Then, in Claude Code: **"teach me the master theorem"**, or `/learn <anything>`.
 
+To remove everything the installer put down, run `.\uninstall.ps1` or `./uninstall.sh` from the same repo checkout.
+
 ## What you need
 
 | | | |
@@ -115,11 +117,23 @@ None of them touch the network at run time. `mermaid.min.js` is vendored for exa
 - It does not manage a review schedule outside your notes. Cards are Obsidian Tasks lines in the session note, due dates edited in place, and they are asked when you next open that topic rather than by a daemon.
 - It does not submit anything, anywhere. It teaches; the work stays yours.
 
+## Uninstall
+
+```powershell
+.\uninstall.ps1        # Windows
+```
+```bash
+./uninstall.sh          # macOS / Linux
+```
+
+Removes exactly what the installer put down: `~/.claude/skills/learn` (the skill, its tools, `config.json`, and any courses you dropped in) and `~/.claude/commands/learn.md`. Asks for confirmation first; pass `-Force` / `--force` to skip it. Your vault - session notes, the learner profile, review cards - is never touched, because none of it lives under `~/.claude`.
+
 ## Layout
 
 ```
 README.md
 install.ps1 / install.sh     copy the skill, write config.json, check dependencies, optional -Verify
+uninstall.ps1 / uninstall.sh remove exactly what the installer put down
 commands/learn.md            the /learn slash command the installer copies to ~/.claude/commands/
 config.example.json          every key, documented
 tools/write_config.py        one helper install.sh calls

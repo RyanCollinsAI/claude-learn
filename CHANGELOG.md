@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.0 - 2026-09-04
+
+Fixes from a fresh-eyes install audit against a stranger who has never seen the skill before.
+
+### Added
+
+- **`commands/learn.md`** - the README has always promised `/learn <anything>`; there was no
+  `commands/` directory in the repo, so it never fired. Both installers now copy it to
+  `~/.claude/commands/learn.md`.
+- **`install.ps1 -Verify` / `install.sh --verify`** - runs one real probe question (ask, grade)
+  plus a mermaid render against a throwaway vault right after install, and prints PASS/FAIL per
+  step. The new `tools/verify_install.py` does the work; both installers just call it.
+- **`uninstall.ps1` / `uninstall.sh`** - removes exactly what the installer put down:
+  `~/.claude/skills/learn` and `~/.claude/commands/learn.md`. There was no way to remove a test
+  install before this.
+- Both installers now check for **Obsidian**, which the README already calls required, and print
+  a clear MISS with the download URL instead of a clean bill of health on five other dependencies
+  while the one the skill is built around goes unchecked.
+
+### Fixed
+
+- `skills/learn/courses/README.md` was installed into the folder the skill globs for pre-built
+  courses, so the "ships empty" claim was false and the file could surface as a fake course. It is
+  deleted; its guidance moved into this README's Pre-built courses section.
+
 ## 0.1.0 - 2026-09-04
 
 First public release. The skill had been running against one person's vault for weeks; this is that
