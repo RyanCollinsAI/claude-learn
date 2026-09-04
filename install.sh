@@ -139,6 +139,19 @@ else
   say miss claude "not on PATH - this is a Claude Code skill"
 fi
 
+OBSIDIAN=""
+for c in "/Applications/Obsidian.app" /usr/bin/obsidian /opt/Obsidian/obsidian /snap/bin/obsidian; do
+  [ -e "$c" ] && OBSIDIAN="$c" && break
+done
+if [ -z "$OBSIDIAN" ] && command -v obsidian >/dev/null 2>&1; then
+  OBSIDIAN="$(command -v obsidian)"
+fi
+if [ -n "$OBSIDIAN" ]; then
+  say ok obsidian "$OBSIDIAN"
+else
+  say miss obsidian "required - not found. Get it at https://obsidian.md/download. Any Markdown editor that renders LaTeX and mermaid live also works."
+fi
+
 CHROME=""
 for c in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
          "/Applications/Chromium.app/Contents/MacOS/Chromium" \

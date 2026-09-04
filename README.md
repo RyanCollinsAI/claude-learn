@@ -32,7 +32,7 @@ Then, in Claude Code: **"teach me the master theorem"**, or `/learn <anything>`.
 |---|---|---|
 | **Claude Code** | required | The skill is a `SKILL.md` it reads. |
 | **Python 3.9+** | required for `quiz.py` | Standard library only. No pip installs. |
-| **A Markdown vault** | required | Any folder. [Obsidian](https://obsidian.md) is what it is built around, because it renders LaTeX and mermaid natively and reloads a file the moment it changes on disk. Any editor that does both works. |
+| **A Markdown vault** | required | Any folder. [Obsidian](https://obsidian.md) is what it is built around, because it renders LaTeX and mermaid natively and reloads a file the moment it changes on disk. Any editor that does both works. Both installers check for it and print a MISS with the download URL if it is not found. |
 | **Chrome or Chromium** | optional | Only the two render tools drive it, headless, to check a diagram before it is embedded. Found automatically; set `chrome_path` if it is somewhere unusual. |
 | **Pillow** | optional | Tightens the diagram crop. Without it the PNG is a little loose, never clipped. |
 | **PowerShell** | optional, Windows | `layout.ps1` and `open_note.ps1` tile and raise the two windows. The skill works without them; you just switch windows yourself. |

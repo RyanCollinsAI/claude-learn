@@ -142,6 +142,20 @@ if ($py) {
 $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
 Say ($null -ne $claudeCmd) 'claude' $(if ($claudeCmd) { $claudeCmd.Source } else { 'not on PATH - this is a Claude Code skill' })
 
+$obsidian = @(
+  "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe",
+  "$env:ProgramFiles\Obsidian\Obsidian.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $obsidian) {
+  $obsidianCmd = Get-Command obsidian -ErrorAction SilentlyContinue
+  if ($obsidianCmd) { $obsidian = $obsidianCmd.Source }
+}
+if ($obsidian) {
+  Say $true 'obsidian' $obsidian
+} else {
+  Say $false 'obsidian' 'required - not found. Get it at https://obsidian.md/download. Any Markdown editor that renders LaTeX and mermaid live also works.'
+}
+
 $chrome = @(
   "C:\Program Files\Google\Chrome\Application\chrome.exe",
   "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
