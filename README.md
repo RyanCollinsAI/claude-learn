@@ -84,7 +84,14 @@ A fresh probe outranks the profile. If you miss something the file says you demo
 
 ## Pre-built courses
 
-`skills/learn/courses/*.md` is one vetted curriculum each - a real reading path in a real order, not a generated outline. The skill globs the folder and skips the probe when the ask matches one. The folder ships empty; drop your own in, and state at the top of the file what it covers and what should trigger it.
+`skills/learn/courses/*.md` is one vetted curriculum each - a real reading path in a real order, not a generated outline. The skill globs the folder and skips the probe when the ask matches one. The folder ships genuinely empty - nothing is installed into it - because a course is vetted by a person, not something worth shipping a generated example of.
+
+Drop your own `.md` file in, and state two things in its opening lines, because that is all the skill reads to decide whether to load it:
+
+1. What the course covers.
+2. What should trigger it - the phrasings someone would actually use.
+
+Then the track itself: sections in teaching order, each item with its link, and a line on why it is there and what to skip. Links are copied exactly and never paraphrased.
 
 ## The tools
 
