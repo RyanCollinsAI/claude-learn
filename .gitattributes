@@ -1,0 +1,8 @@
+# A CRLF in the shebang line makes the script unrunnable on Linux and macOS, and this repo is
+# authored on Windows. Pin the shell script to LF so a contributor's autocrlf cannot break it.
+*.sh text eol=lf
+
+# PowerShell is Windows-only here, so CRLF is the right native ending for it.
+*.ps1 text eol=crlf
+
+vendor/** linguist-vendored
