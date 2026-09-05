@@ -23,6 +23,14 @@ different architecture. These are the parts his had that this did not.
 
 ### Added
 
+- **`tools/run_evals.py`** - runs a set of behaviour evals against two copies of the skill and
+  diffs them, which is the only way to tell whether an edit to `SKILL.md` changed what an agent
+  actually does. Each arm is a throwaway project dir with its own scratch vault and a stubbed
+  `layout.ps1` / `open_note.ps1`, so a suite of headless runs cannot touch a real vault or tile a
+  real desktop. Two limits are documented rather than hidden: the grader picks its own denominator
+  per run, so a single eval moving is usually that and not a regression, and one headless run is a
+  thin slice of a skill built for a long two-person session. Quote the aggregate, not a row.
+  No eval file ships - an eval set encodes what its author wants, so write your own.
 - **`quiz.py grade --why "<text>"`** - optional free text carrying the reasoning
   that came with the pick. It lands in the note as a folded callout under that
   question's grade, and as `why` in the log. Reasoning for a wrong answer is now

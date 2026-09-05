@@ -98,7 +98,7 @@ Then the track itself: sections in teaching order, each item with its link, and 
 
 ## The tools
 
-`skills/learn/tools/README.md` documents all seven in full. In short:
+`skills/learn/tools/README.md` documents all eight in full. In short:
 
 ```
 quiz.py           ask/grade one question: key to disk first, question into the note, number in the terminal
@@ -108,6 +108,7 @@ test_render.py    regression test for both renderers; margins are measured, not 
 learnlib.py       the shared config loader
 layout.ps1        tiles Obsidian left, terminal right (Windows)
 open_note.ps1     opens a note in Obsidian and actually raises the window (Windows)
+run_evals.py      runs the behaviour evals against two copies of the skill and diffs them
 ```
 
 None of them touch the network at run time. `mermaid.min.js` is vendored for exactly that reason.
@@ -141,7 +142,7 @@ tools/write_config.py        one helper install.sh calls
 tools/verify_install.py      the -Verify / --verify smoke test both installers call
 skills/learn/
   SKILL.md                   what the teaching session actually reads
-  tools/                     the seven CLI tools, plus vendored mermaid
+  tools/                     the eight CLI tools, plus vendored mermaid
   courses/                   pre-built curricula; ships empty
 CHANGELOG.md
 ```

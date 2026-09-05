@@ -1,6 +1,6 @@
 # tools
 
-Seven CLI tools for the `learn` skill. Nothing here reaches the network at run time.
+Eight CLI tools for the `learn` skill. Nothing here reaches the network at run time.
 
 On Windows use `py`, not `python` - the bare name is a Microsoft Store stub. Elsewhere use `python3`.
 
@@ -95,6 +95,31 @@ Spec fields for `ask`: `question`, `options` (2 or more, each `{label, value, de
 `ask` prints a one-line pointer for the terminal and exits 0. `grade` prints the result JSON and exits 0.
 
 Exit 2 means the spec or the answer was rejected, with the reason on stderr; the question stays pending so it can be retyped. Exit 3 on `grade` means nothing was pending for that note.
+
+## run_evals.py
+
+Runs the behaviour evals in `evals/evals.json` and diffs two runs. Use it before and after a change to `SKILL.md`, which is the only way to tell whether an edit to the teaching rules actually changed what an agent does. Nothing ran the eval set before this file existed, which made it a dead feature - a list of expectations nobody checked.
+
+```
+py run_evals.py --arm before --skill <old skill dir> --evals evals/evals.json --out runs
+py run_evals.py --arm after  --skill <this skill dir> --evals evals/evals.json --out runs
+py run_evals.py --compare runs
+```
+
+One "arm" is one copy of the skill. Each gets a throwaway project dir holding that copy under its own name plus its own scratch vault, so a run can never touch a real vault, and `layout.ps1` / `open_note.ps1` are stubbed in both arms so a suite of headless runs cannot tile the actual desktop. Every eval runs one headless `claude -p` turn budget; the transcript captures assistant text **and every tool call**, because the tool calls are the real signal. A separate grader call scores it against `expected_output`.
+
+The eval file is `{"skill_name": "...", "evals": [{"id": 0, "name": "...", "prompt": "...", "expected_output": "..."}]}`, where `expected_output` is prose saying what the agent should do and what it must not do, specific enough that a reader could check it against a transcript. The public repo does not ship one - an eval set encodes what its author wants the skill to do, so write your own rather than inherit somebody else's.
+
+`--only 3,10` runs specific eval ids. `--timeout` is seconds per run (default 1200) - raise it for an eval whose behaviour renders a diagram or drives a browser, because that work is slow and a timeout is not a failure.
+
+**Two limits, both real, neither a bug:**
+
+- **The grader picks its own denominator.** It decides how many requirements an `expected_output` contains and does not decide the same way twice, so the same eval scores out of 12 in one arm and 11 in the other. One eval moving is usually that, not a regression. Quote the aggregate percentage; use the per-eval column only to pick a transcript worth reading. `0/0` means the grader itemised nothing, not a perfect or a failing score.
+- **One headless run is a thin slice** of a skill built for a long two-person session, so absolute scores are low and mean little on their own. The comparison between two arms is the measurement.
+
+An eval that checks work the skill now delegates to a subagent will read as unmet: the parent transcript shows the spawn, not the subagent's own tool calls. That is a stale eval, not a regression - fix the eval.
+
+`CLAUDE_CONFIG_DIR` is deliberately not used to isolate an arm. On Windows the OAuth token lives in the credential store tied to the default config dir, so `claude -p` under a throwaway config dir reports `Not logged in` and every run scores zero.
 
 ## layout.ps1
 
