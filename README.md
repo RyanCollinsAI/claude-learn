@@ -34,14 +34,19 @@ To remove everything the installer put down, run `.\uninstall.ps1` or `./uninsta
 |---|---|---|
 | **Claude Code** | required | The skill is a `SKILL.md` it reads. |
 | **Python 3.9+** | required for `quiz.py` | Standard library only. No pip installs. |
-| **A Markdown vault** | required | Any folder. [Obsidian](https://obsidian.md) is what it is built around, because it renders LaTeX and mermaid natively and reloads a file the moment it changes on disk. Any editor that does both works. Both installers check for it and print a MISS with the download URL if it is not found. |
+| **A Markdown vault** | required | Any folder. [Obsidian](https://obsidian.md) is the default reading surface, because it renders LaTeX and mermaid natively and reloads a file the moment it changes on disk. Any editor that does both works. Both installers check for it and print a MISS with the download URL if it is not found. |
 | **Chrome or Chromium** | optional | Only the two render tools drive it, headless, to check a diagram before it is embedded. Found automatically; set `chrome_path` if it is somewhere unusual. |
 | **Pillow** | optional | Tightens the diagram crop. Without it the PNG is a little loose, never clipped. |
 | **PowerShell** | optional, Windows | `layout.ps1` and `open_note.ps1` tile and raise the two windows. The skill works without them; you just switch windows yourself. |
+| **`lavish-axi`** | optional | Only for `surface: podium`. `npm i -g lavish-axi`. Everything else works without it, and the default surface never calls it. |
 
 ## The two panes
 
-Obsidian on the left renders everything - the node text, the question, the options, the grade, the LaTeX and the diagrams. The terminal on the right takes every answer. Nothing opens a third window: a popup would steal focus from the pane you type in, and it could not render maths.
+The markdown session note is the record either way. `surface` decides where you read it and answer into it, and nothing opens a third window: a popup would steal focus from the pane you type in, and it could not render maths.
+
+**`surface: obsidian`, the default.** Obsidian on the left renders everything - the node text, the question, the options, the grade, the LaTeX and the diagrams. The terminal on the right takes every answer.
+
+**`surface: podium`.** The note is rendered into one HTML page served by [`lavish-axi`](https://www.npmjs.com/package/lavish-axi), and a pending question becomes a real answer form on that page, so you read and answer in the same place. The teacher refreshes it after every node and the open page repaints itself; nothing is reopened and your scroll position survives. `podium_page.py --standalone` writes the same session as one self-contained HTML file you can send to someone, mermaid vendored in and images inlined.
 
 That split is why `quiz.py` exists rather than the skill just asking in prose. `ask` writes the question into the note **and the answer key to a sidecar file, before the question is visible**. You type a number in the terminal, `grade` scores it against what was already on disk, and the result is written back into the note. The grade cannot bend to what you picked. A targeted wrong option also tells the teacher *which* misconception you hold, which is far faster than asking you to explain your reasoning. You can still type a reason next to the number if you want to - "2, because the tree collapses" - and it is kept folded under that question rather than pooled into a block at the end, so a wrong pick's reasoning is readable exactly where it happened.
 
@@ -66,6 +71,7 @@ Nothing here is decorative. Each rule is in the skill because leaving it out pro
 | Key | Default | What it does |
 |---|---|---|
 | `vault_root` | the current directory | Absolute root. Every path below is relative to it. |
+| `surface` | `obsidian` | Where you read and answer: `obsidian`, or `podium` for the `lavish-axi` page. An unrecognised value falls back to `obsidian`, so a typo degrades to the surface with no extra dependency. |
 | `obsidian_vault_name` | basename of `vault_root` | The vault's name inside Obsidian, for `obsidian://` URIs. |
 | `learning_dir` | `Learning` | Session notes that do not belong to a course. |
 | `course_learning_dir` | *(empty - feature off)* | Pattern for a course's notes. `{course}` is the folder name on disk. |
@@ -98,20 +104,23 @@ Then the track itself: sections in teaching order, each item with its link, and 
 
 ## The tools
 
-`skills/learn/tools/README.md` documents all eight in full. In short:
+`skills/learn/tools/README.md` documents all eleven in full. In short:
 
 ```
-quiz.py           ask/grade one question: key to disk first, question into the note, number in the terminal
+quiz.py           ask/grade/show one question: key to disk first, question into the note
+session.py        what is still open, and the running correct/partial/off tally
+podium_page.py    renders the session note into the page you read (and a standalone export)
+podium.py         open/refresh/poll that page through lavish-axi
 render_mermaid.py mermaid source -> tightly-cropped PNG, so a diagram is looked at before it is embedded
 render_svg.py     the same for a hand-written SVG
 test_render.py    regression test for both renderers; margins are measured, not asserted
 learnlib.py       the shared config loader
-layout.ps1        tiles Obsidian left, terminal right (Windows)
+layout.ps1        tiles the reading surface left, terminal right (Windows)
 open_note.ps1     opens a note in Obsidian and actually raises the window (Windows)
 run_evals.py      runs the behaviour evals against two copies of the skill and diffs them
 ```
 
-None of them touch the network at run time. `mermaid.min.js` is vendored for exactly that reason.
+None of them touch the network at run time, and `mermaid.min.js` is vendored for exactly that reason. The one exception is the page `podium_page.py` writes, which loads KaTeX from a CDN: the fonts are not vendored, so a podium page needs a network for its equations and nothing else.
 
 ## What it does not do
 

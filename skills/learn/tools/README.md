@@ -1,6 +1,6 @@
 # tools
 
-Eight CLI tools for the `learn` skill. Nothing here reaches the network at run time.
+Eleven CLI tools for the `learn` skill. Nothing here reaches the network at run time, except the page `podium_page.py` writes, which pulls KaTeX from a CDN.
 
 On Windows use `py`, not `python` - the bare name is a Microsoft Store stub. Elsewhere use `python3`.
 
@@ -8,7 +8,9 @@ On Windows use `py`, not `python` - the bare name is a Microsoft Store stub. Els
 
 Not a command. The shared config loader every other Python tool imports.
 
-`config.json`, next to `SKILL.md` one level up, supplies the machine-specific values: `vault_root`, `obsidian_vault_name`, `learning_dir`, `course_learning_dir`, `learner_file`, `quiz_log_dir`, `visuals_dir`, `chrome_path`, `terminal_process`. Every key is optional and has a default, so the tools run on a fresh clone with no config file at all. `config.example.json` documents each one.
+`config.json`, next to `SKILL.md` one level up, supplies the machine-specific values: `vault_root`, `surface`, `obsidian_vault_name`, `learning_dir`, `course_learning_dir`, `learner_file`, `quiz_log_dir`, `visuals_dir`, `chrome_path`, `terminal_process`. Every key is optional and has a default, so the tools run on a fresh clone with no config file at all. `config.example.json` documents each one.
+
+`surface` is `obsidian` (the default) or `podium`. It changes where the learner reads and answers, never what is written: the markdown note is the record on both. An unrecognised value falls back to `obsidian` rather than failing, so a typo degrades to the surface that needs no extra dependency.
 
 Any key can be overridden for a single run with `LEARN_<KEY>`, e.g. `LEARN_VAULT_ROOT`. The two PowerShell tools read the same file and honour the same environment variables.
 
@@ -70,13 +72,18 @@ Needs Pillow to measure margins. Without it the script says so and exits 1 - ski
 
 ## quiz.py
 
-Asks one graded question. The question is written **into an Obsidian note**, the learner reads it there and types the number in the terminal, and the grade is written back into the same note. Nothing opens a window.
+Asks one graded question. The question is written **into the session note**, the learner reads it on whichever surface is configured and answers, and the grade is written back into the same note. Nothing opens a window.
 
 ```
 py quiz.py ask   --spec question.json --note "<learning_dir>/master-theorem"
 py quiz.py grade --answer "2"         --note "<learning_dir>/master-theorem"
 py quiz.py grade --answer "2" --why "the tree collapses" --note "<learning_dir>/master-theorem"
+py quiz.py show  --note "<learning_dir>/master-theorem"
 ```
+
+The arguments are the same on both surfaces. On `surface: podium`, `ask` and `grade` additionally re-render the page so the question, and later the grade, appear there without anyone reopening anything; the answer comes back through `podium.py poll` rather than being typed. A page that fails to render prints a warning and does not fail the ask - the question is already in the note and already pre-committed to its sidecar, and losing that is worse than losing a repaint.
+
+`show` reprints the pending question and its options in the terminal, read from the answer key's own file. Exit 3 when nothing is pending.
 
 `--note` is vault-relative (to `vault_root`), forward slashes, no `.md`. The note must already exist.
 
@@ -95,6 +102,72 @@ Spec fields for `ask`: `question`, `options` (2 or more, each `{label, value, de
 `ask` prints a one-line pointer for the terminal and exits 0. `grade` prints the result JSON and exits 0.
 
 Exit 2 means the spec or the answer was rejected, with the reason on stderr; the question stays pending so it can be retyped. Exit 3 on `grade` means nothing was pending for that note.
+
+## podium_page.py
+
+Renders a session note into the page the learner reads. Markdown in, one HTML page out: LaTeX through KaTeX, mermaid fences, tables, Obsidian embeds and folded callouts, and a real answer form whenever a quiz question is pending.
+
+```
+py podium_page.py --note "<learning_dir>/master-theorem"
+py podium_page.py --note "..." --standalone --out share.html
+py podium_page.py --note "..." --no-inline-assets
+```
+
+Three files are written beside the note: `<slug>-podium.html` (the shell), `<slug>-podium.js` (`window.LEARN_SESSION`, the rendered body) and `<slug>-podium-ver.js` (`window.LEARN_LATEST`, a hash). The shell loads the ~50-byte version file every 3 s and reloads the payload only when the hash moved, so refreshing after every node costs the browser almost nothing.
+
+Both are script tags rather than a `fetch`. Lavish serves the page inside a sandboxed frame whose CSP has no `connect-src`, so `fetch` and `XHR` fail there silently while a script tag works. That is measured on this box, not assumed.
+
+The markdown renderer is hand-written rather than a dependency, for two reasons: a stranger's clone has no `pip install` step, and every off-the-shelf renderer mangles LaTeX the moment it treats `x_1` as emphasis. Maths and code spans are pulled into placeholders before any inline rule runs.
+
+- `--standalone --out <file>` writes ONE file with mermaid inlined from `vendor/mermaid.min.js` and no polling - the shareable export, openable over `file://` with no server and no vault. KaTeX still comes from its CDN; the fonts are not vendored, so a standalone page needs a network for its equations and nothing else.
+- Images are inlined as data URIs by default, which is what makes the page portable and what lets Lavish serve it with no copy step. `--no-inline-assets` copies them beside the page instead.
+- Two CSS rules exist only to keep a layout checker quiet, and both fix real overlaps: `pre.mermaid svg{height:auto}` (mermaid emits `height="100%"`, which makes the graph overrun the next heading) and an explicit `display:none` wrapper inside a folded `<details>` (Chrome otherwise hands out a zero-size box at the origin, which reads as overlapping text).
+
+Exit 1 means the note does not exist.
+
+## podium.py
+
+Wraps `lavish-axi` so the skill can talk about commands instead of windows.
+
+```
+py podium.py open    --note "<learning_dir>/master-theorem"
+py podium.py refresh --note "..."
+py podium.py poll    --note "..." [--reply "..."]
+py podium.py reply   --note "..." --text "..."
+py podium.py end     --note "..."
+py podium.py url     --note "..."
+```
+
+`open` renders the page and opens or resumes the Lavish session, printing the URL. `refresh` re-renders only; the open page picks it up on its own poll. `poll` blocks until the learner sends something - that is `lavish-axi poll`'s design, so run it in the background if the harness caps a foreground command and just re-run it if it dies, because queued feedback is never lost.
+
+`poll` prints one line per event:
+
+```
+ANSWER 2 | WHY: the tree collapses geometrically
+NOTE <selector> | ...      an annotation on one element
+MESSAGE | ...              anything else they typed
+LAYOUT 3 warnings          fix the page before involving them again
+SESSION ended              they closed it
+```
+
+An answer is read from the `data` object the page attaches, with the text shape as a fallback for something queued by hand. Feed the number straight to `quiz.py grade --answer`.
+
+Exit 1 means the note does not exist or `lavish-axi` is not on `PATH`; exit 3 means the poll came back empty, which means the server went away.
+
+## session.py
+
+What is still open, and how the checks are actually going.
+
+```
+py session.py check open  --note "<note>" --node 3 --question "derive the leaf-row total"
+py session.py check close --note "<note>" --grade partial
+py session.py status [--note "<note>"]
+py session.py tally --note "<note>"
+```
+
+`quiz.py` already tracks its own pending questions; this does the same for the free-response checks, which are most of them. `status` lists both kinds across every note, oldest first, with ages, and exits **4** when anything is open so a session-start hook can branch on it. Exit 4 is a flag, not an error.
+
+`check close` also counts the answer toward `<quiz_log_dir>/<slug>.tally.json`, and so does `quiz.py grade`. `tally` prints the running correct/partial/off count with its own reading when the rate leaves the three-in-four band. A `dontKnow` counts as off here: it is an honest gap rather than a wrong answer, but in both cases the idea did not land. The tally is never allowed to fail a grade - a broken counter is worth less than the answer it is counting.
 
 ## run_evals.py
 
@@ -123,13 +196,17 @@ An eval that checks work the skill now delegates to a subagent will read as unme
 
 ## layout.ps1
 
-Tiles the two panes a session needs: Obsidian on the left, the terminal on the right. Windows only.
+Tiles the two panes a session needs: the reading surface on the left, the terminal on the right. Windows only.
 
 ```
-pwsh -File layout.ps1 [-Split 0.5] [-TerminalProcess WindowsTerminal]
+pwsh -File layout.ps1 [-Surface podium|obsidian] [-Split 0.5] [-TerminalProcess WindowsTerminal] [-TitleMatch Podium]
 ```
 
-Uses the primary monitor's **working area**, so nothing ends up under the taskbar, and restores a maximised window first because `MoveWindow` is ignored otherwise. Focus is left in the terminal, which is where the answers are typed. `-Split` is the fraction given to Obsidian; raise it for a diagram-heavy session.
+`-Surface` defaults to `surface` in `config.json`, falling back to `obsidian`. On `obsidian` it finds the Obsidian process; on `podium` it finds the browser window by title (`-TitleMatch`, default `Podium`, which is what the patched `lavish-axi` puts in the titlebar), falling back to any Chrome, Edge, Firefox or Brave window so an unpatched install still gets placed rather than silently skipped.
+
+Uses the primary monitor's **working area**, so nothing ends up under the taskbar, and restores a maximised window first because `MoveWindow` is ignored otherwise. Focus is left in the terminal, which is where the session is driven from. `-Split` is the fraction given to the left pane; raise it for a diagram-heavy session.
+
+The placement line is printed with `Write-Host`, not `Write-Output`: the caller assigns the function's result, so `Write-Output` was being captured into that variable and the script reported nothing at all on success.
 
 The terminal is found by process name: `terminal_process` from `config.json` if set, otherwise `WindowsTerminal`, `wezterm-gui`, `alacritty`, then `conhost`. Override with `-TerminalProcess`.
 
@@ -137,7 +214,7 @@ Exit 0 means both were placed. Exit 1 means one was not running - it names which
 
 ## open_note.ps1
 
-Opens a vault note in Obsidian and raises the window past the terminal. Windows only.
+Opens a vault note in Obsidian and raises the window past the terminal. Windows only, and only for `surface: obsidian` - on a podium session use `podium.py open`, and do not raise Obsidian at all.
 
 ```
 pwsh -File open_note.ps1 -Note "<learning_dir>/master-theorem"

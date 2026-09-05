@@ -1,9 +1,11 @@
-"""quiz.py - a graded question, rendered in Obsidian, answered in the terminal.
+"""quiz.py - a graded question, written into the note, answered by the learner.
 
-Obsidian is the reading surface and the terminal is the input surface, so the
-question goes in the note and the answer comes back as a typed number. No
-popup, no third window, and full LaTeX in the question and the options because
-Obsidian renders it.
+The note is the record on either surface. On the **obsidian** surface they read
+the question in the note on the left and type a number in the terminal on the
+right. On the **podium** surface the same note is rendered into a Lavish page
+and the question gets a real answer form there. `surface` in config.json picks
+which; the commands and their arguments are identical either way, so nothing
+that already calls this tool has to change.
 
 The point of the tool is the pre-commitment. `ask` writes the answer key to a
 sidecar file BEFORE the question is visible, so the grade cannot be decided
@@ -13,6 +15,7 @@ was already on disk.
 Usage:
     py quiz.py ask   --spec q.json --note "<learning_dir>/master-theorem"
     py quiz.py grade --answer "2"  --note "<learning_dir>/master-theorem"
+    py quiz.py show  --note "<learning_dir>/master-theorem"
 
 `--note` is vault-relative, forward slashes, no `.md`. The vault root and the
 sidecar folder come from config.json - see learnlib.py.
@@ -40,7 +43,7 @@ reasoning is readable exactly where it happened.
 Exit codes:
     0  worked
     2  the spec or the answer is invalid - the reason is on stderr
-    3  `grade` found no pending question for that note
+    3  `grade` or `show` found no pending question for that note
 """
 
 import argparse
@@ -89,6 +92,33 @@ def append_note(path, text):
         fail("no such note: %s. Create it before asking a question." % path)
     with open(path, "a", encoding="utf-8") as fh:
         fh.write(text)
+
+
+def refresh_surface(rel):
+    """On the podium surface, re-render the page so the question (or the grade)
+    is visible without anyone reopening anything.
+
+    Deliberately best-effort. A page that failed to render is worth a warning;
+    it is not worth losing a question that is already written into the note and
+    pre-committed to its sidecar.
+    """
+    if learnlib.SURFACE != "podium":
+        return
+    try:
+        import podium_page
+        podium_page.write_pages(rel)
+    except Exception as exc:                       # noqa: BLE001 - see above
+        sys.stderr.write("quiz: the note is written but the page did not "
+                         "refresh (%s). Run podium.py refresh.\n" % exc)
+
+
+def bump_tally(rel, grade):
+    """Count this answer toward the session tally. Never fatal."""
+    try:
+        import session
+        session.bump(rel, grade)
+    except Exception:                              # noqa: BLE001
+        pass
 
 
 # --------------------------------------------------------------------------
@@ -170,8 +200,9 @@ def render_question(q):
         if opt["description"]:
             out.append("   - %s\n" % opt["description"])
     out.append("\n**0.** I don't know - an honest gap, not a wrong answer.\n\n")
-    hint = "Type every correct number in the terminal, comma separated." if q["multi"] \
-        else "Type the number in the terminal."
+    where = "on the page" if learnlib.SURFACE == "podium" else "in the terminal"
+    hint = ("Answer %s - every correct number, comma separated." % where) if q["multi"] \
+        else ("Answer %s - the number." % where)
     # The marker plus the one-line hint under it is the pending region.
     # Grading replaces exactly that and keeps whatever follows, because a
     # sidebar callout may be appended after it while the question is open.
@@ -199,11 +230,14 @@ def do_ask(args):
         json.dump({**q, "note": args.note, "asked": time.strftime("%Y-%m-%dT%H:%M:%S")},
                   fh, ensure_ascii=False)
 
-    # The terminal gets a pointer only. The question itself lives in the note,
-    # so they read it on the left and answer on the right.
+    refresh_surface(args.note)
+
+    # The terminal gets a pointer only. The question itself lives on the
+    # surface they read, so they never see it twice.
     n = len(q["options"])
-    print("%s -> 1-%d, or 0 for I don't know. Say why too, if you want."
-          % (q["label"] or "Question", n))
+    where = "on the page" if learnlib.SURFACE == "podium" else "in the terminal"
+    print("%s -> 1-%d, or 0 for I don't know, %s. Say why too, if you want."
+          % (q["label"] or "Question", n, where))
 
 
 # --------------------------------------------------------------------------
@@ -310,7 +344,46 @@ def do_grade(args):
         fh.write(json.dumps(result, ensure_ascii=False) + "\n")
     os.remove(pending)
 
+    # A dontKnow is an honest gap, not a wrong answer - but for the tally it
+    # counts the same as a miss, because in both cases the idea did not land.
+    bump_tally(args.note, "correct" if outcome == "correct" else "off")
+    refresh_surface(args.note)
+
     print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+# --------------------------------------------------------------------------
+# show - reprint the pending question
+# --------------------------------------------------------------------------
+
+def do_show(args):
+    """The pending question, reprinted from the sidecar.
+
+    For the moment the learner has scrolled the surface away and does not want
+    to hunt for it. This reads the answer key's own file, so it can only ever
+    show a question that is genuinely still open.
+    """
+    pending = pending_path(args.note)
+    if not os.path.exists(pending):
+        fail("no pending question for %s" % args.note, code=3)
+    with open(pending, encoding="utf-8") as fh:
+        q = json.load(fh)
+
+    if q.get("label"):
+        print(q["label"])
+    print(q["question"])
+    if q.get("details"):
+        print("(%s)" % q["details"])
+    print()
+    for i, opt in enumerate(q["options"], start=1):
+        print("%d. %s" % (i, opt["label"]))
+        if opt.get("description"):
+            print("   - %s" % opt["description"])
+    print("0. I don't know")
+    print()
+    hint = "Type every correct number, comma separated." if q.get("multi") \
+        else "Type the number."
+    print("%s Asked %s." % (hint, q.get("asked") or "earlier"))
 
 
 def main():
@@ -328,6 +401,10 @@ def main():
     g.add_argument("--why", default="", help="optional - their reasoning, kept beside this question")
     g.add_argument("--note", required=True, help="vault-relative note path")
     g.set_defaults(func=do_grade)
+
+    s = sub.add_parser("show", help="reprint the pending question in the terminal")
+    s.add_argument("--note", required=True, help="vault-relative note path")
+    s.set_defaults(func=do_show)
 
     args = ap.parse_args()
     if args.cmd == "ask" and not args.spec and not args.stdin:

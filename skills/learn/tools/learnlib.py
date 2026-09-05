@@ -40,6 +40,14 @@ def cfg(key, default=None):
 
 VAULT_ROOT = os.path.abspath(cfg("vault_root", os.getcwd()))
 VAULT_NAME = cfg("obsidian_vault_name", os.path.basename(VAULT_ROOT))
+
+# Which surface the learner reads on. "obsidian" is the default so a fresh
+# clone with no config.json behaves exactly as it always did; "podium" moves
+# the reading and the answering onto a Lavish page (see tools/podium.py).
+SURFACE = str(cfg("surface", "obsidian")).strip().lower()
+if SURFACE not in ("obsidian", "podium"):
+    SURFACE = "obsidian"
+
 LEARNING_DIR = cfg("learning_dir", "Learning")
 COURSE_LEARNING_DIR = cfg("course_learning_dir", "")
 LEARNER_FILE = cfg("learner_file", LEARNING_DIR + "/LEARNER.md")

@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.4.0 - 2026-09-04
+
+The reading surface becomes a choice, and four things the teacher used to hold
+only in its head are now files on disk.
+
+### Added
+
+- **A second reading surface, `surface: podium`.** The session note is rendered
+  into one HTML page served by `lavish-axi`, and a pending question becomes a
+  real answer form on that page, so the learner reads and answers in one place
+  instead of reading on the left and typing on the right. `surface: obsidian`
+  stays the default and is unchanged, so an existing install behaves exactly as
+  it did and needs no new dependency.
+- **`tools/podium_page.py`** renders the note: LaTeX through KaTeX, mermaid
+  fences, tables, Obsidian embeds and folded callouts. The markdown renderer is
+  hand-written rather than a dependency, because a clone has no `pip install`
+  step and every off-the-shelf renderer mangles LaTeX the moment it treats
+  `x_1` as emphasis. `--standalone` writes the whole session as one file with
+  mermaid inlined and images as data URIs, openable over `file://` with no
+  server and no vault.
+- **`tools/podium.py`** - `open`, `refresh`, `poll`, `reply`, `end`, `url` over
+  `lavish-axi`. `poll` returns one line per event, so an answer from the page
+  feeds straight into `quiz.py grade --answer`.
+- **`tools/session.py`** - the open-check watchdog and the running tally. A
+  free-response check is written to disk when it is asked and cleared when it
+  is graded, and `session.py status` at the start of a session surfaces
+  anything still waiting. Three of five real sessions died on a question nobody
+  ever came back to; the learner does not remember it either, so the file is
+  the only thing that does. `tally` turns "aim for about three checks in four
+  correct" from a feeling into a number.
+- **`quiz.py show`** reprints the pending question and its options from the
+  answer key's own file, for when the surface has been scrolled away. It can
+  only ever show a question that is genuinely still open.
+- **A `deadline:` field**, asked once at the start of a track. Every track that
+  finished had an external date; the ones that stalled did not.
+- **A progress line after every graded probe question** - which strands are
+  bracketed and which are still open. The probe has no question cap by design,
+  and without this it reads as an interrogation.
+
+### Changed
+
+- `layout.ps1` takes `-Surface` and tiles the configured reading surface, by
+  window title on podium. Its placement line is now printed with `Write-Host`:
+  the caller assigns the function's result, so `Write-Output` was being
+  captured into that variable and the script had been reporting nothing at all
+  on success.
+- Two evals were rewritten. Both described work the skill deliberately
+  delegates to a subagent, and the grader only ever sees the parent transcript,
+  so both were scoring the parent for things it is explicitly told not to do
+  itself - the more correctly the skill delegated, the lower it scored. They
+  now grade the spawn and the brief, which is what the transcript can show.
+- Eval arms pin `surface: obsidian`, so a headless suite can never drive a real
+  Lavish window on the machine running it.
+
 ## 0.3.0 - 2026-09-04
 
 Three changes taken from a side-by-side comparison with Eero Alvar's learning

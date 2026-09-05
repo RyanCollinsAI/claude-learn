@@ -110,6 +110,9 @@ def build_arm(skill_src, arm_dir, skill_name, stub_windows_tools=True):
     with open(os.path.join(skills, "config.json"), "w", encoding="utf-8") as fh:
         json.dump({
             "vault_root": vault.replace("\\", "/"),
+            # Pinned, not left to the default: an eval arm must never drive a
+            # real Lavish window on the machine running the suite.
+            "surface": "obsidian",
             "obsidian_vault_name": "scratch",
             "learning_dir": "Learning",
             "course_learning_dir": "",

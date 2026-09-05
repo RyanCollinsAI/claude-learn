@@ -4,6 +4,9 @@
   "_vault_root": "absolute path to the Obsidian vault (or any notes folder) the skill writes into. Every other path in this file is relative to it. Default: the current directory.",
   "vault_root": "C:\\Users\\you\\Vault",
 
+  "_surface": "where the learner reads and answers. 'obsidian' (the default) puts the session note in Obsidian on the left and takes answers in the terminal on the right - no extra dependency. 'podium' renders the same note into a Lavish page and takes the answers on the page itself; it needs `lavish-axi` on PATH (npm i -g lavish-axi). The note is the durable record either way, and every tool takes the same arguments on both. Default: obsidian.",
+  "surface": "obsidian",
+
   "_obsidian_vault_name": "the vault's name as Obsidian knows it - the last path segment of vault_root, unless you renamed the vault inside Obsidian. Used to build the obsidian://open URI. Default: the basename of vault_root.",
   "obsidian_vault_name": "Vault",
 
