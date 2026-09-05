@@ -75,6 +75,7 @@ Asks one graded question. The question is written **into an Obsidian note**, the
 ```
 py quiz.py ask   --spec question.json --note "<learning_dir>/master-theorem"
 py quiz.py grade --answer "2"         --note "<learning_dir>/master-theorem"
+py quiz.py grade --answer "2" --why "the tree collapses" --note "<learning_dir>/master-theorem"
 ```
 
 `--note` is vault-relative (to `vault_root`), forward slashes, no `.md`. The note must already exist.
@@ -88,6 +89,7 @@ Spec fields for `ask`: `question`, `options` (2 or more, each `{label, value, de
 - `correctAnswer` is matched by value, never by position. A value matching no option is a hard error.
 - `--answer` accepts `2`, `b`, `2,3` or `2 3` for multi-select, and `0`, `idk`, `?` or `dont know` for a gap. Multi-select grades as an exact-set match.
 - Only one question may be pending per note. A second `ask` is refused.
+- `--why` is optional free text - whatever reasoning came with the pick. It is written into the note as a folded `[!quote]` callout under that question's grade, and stored as `why` in the log, so a wrong pick's reasoning stays beside the question instead of being pooled at the end of the session.
 - Every graded answer appends to `<quiz_log_dir>/<slug>.jsonl`.
 
 `ask` prints a one-line pointer for the terminal and exits 0. `grade` prints the result JSON and exits 0.

@@ -32,6 +32,11 @@ Spec (JSON) for `ask`:
 `grade --answer` accepts: "2", "b", "2,3" or "2 3" for multi-select, and
 "0", "idk", "?" or "dont know" for an honest gap.
 
+`grade --why "<text>"` is optional. It carries whatever reasoning they gave
+alongside the pick, and it lands in the note beside that specific question
+instead of being pooled into one end-of-session block, so a wrong pick's
+reasoning is readable exactly where it happened.
+
 Exit codes:
     0  worked
     2  the spec or the answer is invalid - the reason is on stderr
@@ -197,7 +202,7 @@ def do_ask(args):
     # The terminal gets a pointer only. The question itself lives in the note,
     # so they read it on the left and answer on the right.
     n = len(q["options"])
-    print("%s -> 1-%d, or 0 for I don't know."
+    print("%s -> 1-%d, or 0 for I don't know. Say why too, if you want."
           % (q["label"] or "Question", n))
 
 
@@ -242,6 +247,11 @@ def render_feedback(q, result):
     lines.append(" The answer is %s: %s.\n\n"
                  % (", ".join(correct_nums), "; ".join(result["correctLabels"])))
     lines.append("> %s\n" % q["explanation"].replace("\n", "\n> "))
+    # Their own reasoning, if they gave any, sits with the question it belongs
+    # to rather than in one pooled block at the end of the session.
+    if result.get("why"):
+        lines.append("\n> [!quote]- Your reasoning\n> %s\n"
+                     % result["why"].replace("\n", "\n> "))
     return "".join(lines)
 
 
@@ -275,6 +285,7 @@ def do_grade(args):
         "displayOrder": [{"index": i, "label": o["label"], "value": o["value"]}
                          for i, o in enumerate(q["options"], start=1)],
         "multiSelect": q["multi"],
+        "why": (args.why or "").strip(),
         "raw": args.answer,
         "asked": q.get("asked"),
         "graded": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -314,6 +325,7 @@ def main():
 
     g = sub.add_parser("grade", help="grade the typed answer and write the result")
     g.add_argument("--answer", required=True, help='what they typed, e.g. "2" or "2,3" or "idk"')
+    g.add_argument("--why", default="", help="optional - their reasoning, kept beside this question")
     g.add_argument("--note", required=True, help="vault-relative note path")
     g.set_defaults(func=do_grade)
 

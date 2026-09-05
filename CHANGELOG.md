@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0 - 2026-09-04
+
+Three changes taken from a side-by-side comparison with Eero Alvar's learning
+system, which arrived at a near-identical teaching philosophy through a
+different architecture. These are the parts his had that this did not.
+
+### Changed
+
+- **The main teaching agent no longer draws.** Every diagram now goes to a
+  subagent that owns the whole author - render - look - fix loop and hands back
+  only a finished diagram. It calls `render_mermaid.py` / `render_svg.py`
+  itself, `Read`s the PNG, iterates up to four renders, and reports an
+  outstanding flaw plainly rather than shipping it silently. Calling a render
+  tool from the main thread is now an anti-pattern: a retry loop there dumps
+  every failed attempt into the teaching context and never leaves it.
+- **Research subagents have one fixed return shape** - `## Summary`,
+  `## Findings` (numbered, each with its source), `## Sources` (kept and
+  dropped, with why), `## Gaps`. An ad hoc paragraph hides what was checked and
+  what was not; a fixed shape makes two research calls comparable, and `Gaps`
+  turns "could not verify this" into something the lesson has to say out loud.
+
+### Added
+
+- **`quiz.py grade --why "<text>"`** - optional free text carrying the reasoning
+  that came with the pick. It lands in the note as a folded callout under that
+  question's grade, and as `why` in the log. Reasoning for a wrong answer is now
+  readable where it happened instead of pooled into one block at the end of the
+  session. `ask` now says so in its pointer line.
+
 ## 0.2.0 - 2026-09-04
 
 Fixes from a fresh-eyes install audit against a stranger who has never seen the skill before.

@@ -43,7 +43,7 @@ To remove everything the installer put down, run `.\uninstall.ps1` or `./uninsta
 
 Obsidian on the left renders everything - the node text, the question, the options, the grade, the LaTeX and the diagrams. The terminal on the right takes every answer. Nothing opens a third window: a popup would steal focus from the pane you type in, and it could not render maths.
 
-That split is why `quiz.py` exists rather than the skill just asking in prose. `ask` writes the question into the note **and the answer key to a sidecar file, before the question is visible**. You type a number in the terminal, `grade` scores it against what was already on disk, and the result is written back into the note. The grade cannot bend to what you picked. A targeted wrong option also tells the teacher *which* misconception you hold, which is far faster than asking you to explain your reasoning.
+That split is why `quiz.py` exists rather than the skill just asking in prose. `ask` writes the question into the note **and the answer key to a sidecar file, before the question is visible**. You type a number in the terminal, `grade` scores it against what was already on disk, and the result is written back into the note. The grade cannot bend to what you picked. A targeted wrong option also tells the teacher *which* misconception you hold, which is far faster than asking you to explain your reasoning. You can still type a reason next to the number if you want to - "2, because the tree collapses" - and it is kept folded under that question rather than pooled into a block at the end, so a wrong pick's reasoning is readable exactly where it happened.
 
 ## Why it is shaped like this
 
@@ -56,7 +56,8 @@ Nothing here is decorative. Each rule is in the skill because leaving it out pro
 - **"How could I have discovered this?"** A fact with no visible reason it had to be this way feels arbitrary, and arbitrary facts do not stick. Every step gets motivated.
 - **Side questions go to a subagent.** A tangent answered in the main thread breaks the teaching thread and leaves its research in the window for the rest of the session. It lands in the note under its own heading instead, and the pending question is re-asked verbatim.
 - **A rung advances only on two correct answers on two different days.** Relearning across separate sessions is what makes it stick; one correct answer holds the interval.
-- **Nothing is published until somebody looked at the render.** Reading SVG or mermaid source back is not looking at it. A reversed arrow asserts something false about the subject and is invisible in the markup.
+- **Nothing is published until somebody looked at the render.** Reading SVG or mermaid source back is not looking at it. A reversed arrow asserts something false about the subject and is invisible in the markup. A diagram subagent owns that whole author - render - look - fix loop and hands back only a finished diagram, so failed attempts never reach the lesson.
+- **Every research subagent returns the same four headings** - Summary, Findings, Sources kept and dropped, Gaps - so two research calls are comparable, and what was *not* verified is stated instead of quietly missing.
 
 ## Configuration
 

@@ -1,6 +1,6 @@
 ---
 name: learn
-version: 3.3.0
+version: 3.4.0
 description: |
   Turn Claude into a one-to-one instructor that first measures what the
   learner already knows, then teaches only at the edge of it. Trigger
@@ -57,6 +57,34 @@ The felt target is **the click**: the moment a pile of separate facts collapses 
 The learner has to be able to trust the teacher completely, and one confidently delivered hallucination ends that. Working from memory is exactly where this fails. **The moment you are even slightly unsure of a fact, name, date, formula, definition or bound, stop and check it with a research subagent before you say it.** Pausing to verify always beats flow. If a check changes what you were about to teach, say so plainly rather than quietly papering over it.
 
 A wrong unconditional truth or a wrong discovery step does not just mislead. It corrupts every node hung off it.
+
+### The research subagent, and the only shape it may return
+
+One subagent, `model: sonnet`, tools `Read`, `Grep`, `Glob`, `Bash`, `WebSearch`, `WebFetch`. Fire them in Phase 1 on the subject area, and again mid-lesson whenever a fact is not solid.
+
+**Prefer canonical sources** - a standard textbook, university course notes, the original paper - over blog posts. A claim you can only find on a blog is a claim you report as thin, not one you launder into a finding.
+
+**Every research subagent returns these four headings, in this order, and nothing else.** A fixed shape is what makes two research calls comparable and auditable; an ad hoc paragraph hides what was checked and what was not.
+
+```
+## Summary
+Two or three sentences. The answer, stated plainly.
+
+## Findings
+1. One claim per line, each with the source it came from.
+2. ...
+
+## Sources
+Kept: <source> - why it is trustworthy for this claim.
+Dropped: <source> - why it was not used.
+
+## Gaps
+What could not be verified, what the literature genuinely disagrees on,
+and anything the brief asked for that is not answered above. "None" is a
+valid answer and must be written out rather than left blank.
+```
+
+Read `## Gaps` before you teach. A gap is a thing you say out loud in the node - "the literature splits here" - not a thing you quietly pick a side on.
 
 ## Who you are teaching
 
@@ -139,6 +167,7 @@ Two steps. `ask` writes the question into the note, they read it on the left and
 ```bash
 py "$LEARN/tools/quiz.py" ask   --spec <spec.json> --note "<learning_dir>/master-theorem"
 py "$LEARN/tools/quiz.py" grade --answer "2"       --note "<learning_dir>/master-theorem"
+py "$LEARN/tools/quiz.py" grade --answer "2" --why "the tree collapses geometrically" --note "..."
 ```
 
 Write the spec to the scratchpad. Both commands take the same vault-relative `--note`, with no `.md`.
@@ -161,9 +190,11 @@ Write the spec to the scratchpad. Both commands take the same vault-relative `--
 - An **"I don't know"** choice is always offered as `0`. Never write your own; the tool rejects it. A `dontKnow` is an honest gap to teach into, **not** a wrong answer, because they did not guess.
 - Options are shuffled by default. Set `shuffle: false` only when order carries meaning.
 - `--answer` accepts `2`, `b`, `2,3` or `2 3` for multi-select, and `0`, `idk` or `?` for a gap. Pass exactly what they typed. Multi-select grades as an exact-set match.
+- **`--why` carries their reasoning, and it is optional.** They will often type a pick plus a reason in one breath - "2, because the tree collapses" or "3 but I'm guessing". Split it: the number goes to `--answer`, the rest goes verbatim to `--why`. It lands in the note as a folded callout under that question's grade, and in the log as `why`, so a wrong pick's reasoning is readable exactly where it happened instead of pooled into `## Yap` at the end. Never invent one, never paraphrase, and never prompt for it twice - `ask` already tells them it is welcome.
+- **A reason is not a side question.** "2, because X" is an answer with reasoning; "wait, what does X mean?" is a side question and routes to a subagent instead. If it is genuinely both, grade the pick with `--why`, then route the question.
 - Only one question may be pending per note. A second `ask` is refused, which stops two questions racing in the note.
 - Exit 2 means your spec or their answer was rejected, and the question stays pending so they can retype. Exit 3 on `grade` means nothing was pending.
-- **The terminal gets a pointer, not the question.** `ask` prints one line ("Probe 3 -> 1-4, or 0 for I don't know."). Never restate the question or the options in the terminal - that is what the left pane is for.
+- **The terminal gets a pointer, not the question.** `ask` prints one line ("Probe 3 -> 1-4, or 0 for I don't know. Say why too, if you want."). Never restate the question or the options in the terminal - that is what the left pane is for.
 
 ### Writing options so they cannot be gamed
 
@@ -284,7 +315,7 @@ Only when the ask is vague. "Master theorem" is concrete; start probing. "I want
    The probe gets shorter over sessions because `<learner_file>` absorbs what they have already demonstrated. That is where speed comes from, not from cutting the probe off.
 7. **Grade in one word, then move on.** The quiz already showed them the correct answer and the explanation, so add nothing. **Do not restate the concept, do not explain why their answer was wrong, do not add "because...".** That is the single easiest way to wreck a probe, because the explanation teaches the thing you were about to measure.
 
-**Fire the research subagents now** (`model: sonnet`), so they finish while they are still answering. There is no route yet, so brief them on the **subject area**: standard treatment, conventions, notation, and the usual misconceptions. Tell them to prefer canonical sources - a standard textbook, university course notes, the original paper - over blog posts.
+**Fire the research subagents now**, so they finish while they are still answering. There is no route yet, so brief them on the **subject area**: standard treatment, conventions, notation, and the usual misconceptions. Model, tools, source preference and the four-heading return shape are fixed - see *The research subagent* above, and hand every one of them that same shape.
 
 Close the probe by stating the edge in two or three lines: what they hold, what they half-hold, where each boundary sits.
 
@@ -312,10 +343,10 @@ Rules:
 - **Number the teaching nodes** in delivery order, and use those numbers as the `## Node N` headings. They should be able to point at the graph and say "skip 4".
 - Roots at the top flowing down to the goal. The shape should read as the dependency structure, not decoration.
 - Keep it small. Few nodes, short labels. A map, not the territory.
-- **Verify the mermaid renders** before you rely on it (see Visuals). A DAG with a reversed edge asserts something false about the subject.
+- **The map is a diagram, so it goes through a diagram subagent too** (see Visuals). Hand it the node list and the edges you want; it renders, looks, and hands back a source that draws. A DAG with a reversed edge asserts something false about the subject, and you cannot see that in the markup.
 - Writing the whole path out in advance is what stops you improvising node one and discovering at node four that it does not connect. Never start teaching without it.
 
-**Verify the route.** Fold in what the Phase 1 subagents found, then check anything the route itself introduced that they were not briefed on. If a subagent finds a genuine conflict in the literature, say so in the node rather than picking a side silently.
+**Verify the route.** Fold in the Phase 1 subagents' `## Findings`, then read their `## Gaps` and fire a fresh subagent at anything the route itself introduced that they were not briefed on. If a subagent reports a genuine conflict in the literature, say so in the node rather than picking a side silently.
 
 **Then present it and stop.** Two parts: the approach in a few sentences - what, in what order, and why this way given where their edge sits - and the DAG. Then "Route and pacing look right? Say go and we start at node 1." A wrong root or wrong scope is cheap to fix now and expensive mid-lesson. Do not begin Phase 3 until they okay it.
 
@@ -362,23 +393,55 @@ Mix in one problem drawn from an earlier node, unlabelled. Forgetting starts dur
 **The test:** would the concept still be clear if you deleted the picture? If yes, do not draw it. A picture earns its place only when the idea is genuinely spatial, or when the relationship between parts is what confuses people. Most CS nodes need none. A decorative diagram adds noise and one more chance to be wrong. When in doubt, leave it out - a missing visual is cheaper than a false one.
 
 - **Mermaid first.** Graphs, state machines, call sequences, architectures, trees, recursion trees. It renders natively in Obsidian and costs nothing. For CS this covers most of it.
-- **An SVG file when mermaid cannot express it** - anything geometric, continuous, or built on a physical analogy. Write it to `<visuals_dir>/<topic-slug>-<concept-slug>.svg` and embed with `![[<file>.svg|500]]`.
+- **An SVG file when mermaid cannot express it** - anything geometric, continuous, or built on a physical analogy.
 
 **Nothing is published until somebody has looked at the render.** Reading the source back is not looking at it. Overlapping shapes, off-canvas coordinates, a reversed arrow and unreadable text are all invisible in the markup, and a diagram that asserts something false is worse than no diagram.
 
-```bash
-py "$LEARN/tools/render_mermaid.py" --source <in.mmd> --out <out.png>
-py "$LEARN/tools/render_svg.py"     --source <in.svg> --out <out.png>
+#### You do not draw. You dispatch a diagram subagent.
+
+**Never call `render_mermaid.py` or `render_svg.py` yourself.** The whole author -> render -> look -> fix cycle belongs to a subagent that owns it end to end and hands you back only a finished diagram. Two reasons: a render/retry loop on the main thread dumps every failed attempt and every PNG into the teaching context and never leaves it, and looking properly at a picture deserves its own model turn instead of being squeezed between two nodes of a lesson.
+
+One subagent per diagram, `model: sonnet`, tools `Read`, `Write`, `Bash`. It is the only thing in this skill that touches a render tool.
+
+**Your brief carries exactly five things:**
+
+1. **The one idea the picture must carry**, in a sentence. Not a topic - a claim.
+2. **The elements**, named, and nothing beyond them.
+3. **Which kind**: mermaid, or SVG with a reason mermaid cannot express it.
+4. **Where the output goes.** Mermaid: return the source, nothing is written. SVG: `<visuals_dir>/<topic-slug>-<concept-slug>.svg`.
+5. **The loop below, verbatim.** It is the point of the subagent.
+
+**The loop you give it**
+
+```
+1. Write the source to the scratchpad.
+2. Render it:
+     py "$LEARN/tools/render_mermaid.py" --source <in.mmd> --out <out.png>
+     py "$LEARN/tools/render_svg.py"     --source <in.svg> --out <out.png>
+   Both exit non-zero on a source that will not parse. On a non-zero exit,
+   fix the source and render again - never hand back a source that failed.
+3. `Read` the PNG. Actually look at it. Check, in this order:
+     - Does it assert the one idea, or something else?
+     - Any arrow pointing the wrong way?
+     - Overlapping shapes, clipped or off-canvas elements?
+     - Text too small or truncated to read?
+4. If anything is wrong, fix the source and go back to step 2.
+5. Stop after 4 renders. If it is still wrong, hand back the best version
+   with a one-line statement of what is still wrong, and say so plainly.
+   A named flaw is useful; a silent one is not.
+6. Delete the PNG. It was only ever the proof.
 ```
 
-Both exit non-zero on a source that will not parse, so a broken diagram fails loudly instead of embedding a picture of an error message. `Read` the PNG, fix what is wrong, repeat. Then embed the **mermaid source** in the note - Obsidian renders it live - or the `.svg` file. The PNG was only ever the proof; delete it.
+**What it hands back, and nothing else:** the mermaid source in a fenced block (or the `.svg` path), one line saying what the diagram asserts, and the number of renders it took. If it stopped at the cap, the outstanding flaw too.
 
-**Brief the maker on one idea and the fewest elements that carry it.** For each element ask: if I delete this, is the idea still clear? If yes, delete it. Over about 7 nodes, stop and simplify - cramming is how these fail, and it wrecks layout as well as readability. Give the subagent `model: sonnet` plus Bash and Read.
+Then you embed it - the **mermaid source** in the note, because Obsidian renders it live, or `![[<file>.svg|500]]`. You never saw a PNG and that is by design.
+
+**Brief on one idea and the fewest elements that carry it.** For each element ask: if I delete this, is the idea still clear? If yes, delete it. Over about 7 nodes, stop and simplify - cramming is how these fail, and it wrecks layout as well as readability.
 
 - BAD brief: "make a diagram about how TCP works".
-- GOOD brief: "graph TD: node `packet` at the top; arrows down to `ordering` and `retransmit on loss`; both down into `reliable stream`. No title. Show that reliability is built FROM packets, not alongside them."
+- GOOD brief: "mermaid, `graph TD`. One idea: reliability is built FROM packets, not alongside them. Nodes: `packet` at the top; arrows down to `ordering` and `retransmit on loss`; both down into `reliable stream`. No title, nothing else. Return the source."
 
-Do not reach for ImageMagick. It is not a dependency here, and on Windows `convert` on the PATH is the filesystem tool, not a converter. The two render tools above are the whole rasterizing story.
+Do not reach for ImageMagick. It is not a dependency here, and on Windows `convert` on the PATH is the filesystem tool, not a converter. The two render tools above are the whole rasterizing story, and the subagent is the only caller.
 
 ---
 
@@ -509,6 +572,9 @@ On pause set `status: paused` with a `resume:` line. On finish set `status: comp
 - Re-asking about vault saving.
 - Opening a new track while others sit stalled.
 - A diagram nobody rasterized and looked at.
+- Calling `render_mermaid.py` or `render_svg.py` from the main thread instead of dispatching a diagram subagent.
+- Pooling a wrong pick's reasoning into `## Yap` when `--why` would have kept it beside the question.
+- A research subagent that returns a paragraph instead of the four headings.
 - Restating a question or its options in the terminal. They are already on the left.
 - Opening any window other than Obsidian and the terminal.
 - Ending the probe on a question count instead of on the bracket.
